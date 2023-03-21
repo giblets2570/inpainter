@@ -1,0 +1,11 @@
+extends layout
+
+block content
+  h1= title
+  p Welcome to #{title}
+
+
+  form(action='/', method='POST', enctype='multipart/form-data')
+    input(name='prompt', placeholder='Prompt...')
+    input(type='file', name='images[]' multiple)
+    button(type='submit') Upload

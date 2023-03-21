@@ -1,0 +1,30 @@
+{
+    "$schema": "./schema.json",
+    "vhosts": {
+        "/": {
+            "connection": {
+                "heartbeat": 1,
+                "socketOptions": {
+                    "timeout": 1000
+                }
+            },
+            "exchanges": [
+                ""
+            ],
+            "queues": [
+                "job_request",
+                "job_complete"
+            ],
+            "publications": {
+                "job_request": {
+                    "exchange": ""
+                }
+            },
+            "subscriptions": {
+                "job_complete_sub": {
+                    "queue": "job_complete"
+                }
+            }
+        }
+    }
+}

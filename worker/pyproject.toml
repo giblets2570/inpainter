@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "inpainter-worker"
+version = "0.1.0"
+description = ""
+authors = ["giblets2570 <tomkeohanemurray@gmail.com>"]
+readme = "README.md"
+packages = [{include = "inpainter_worker"}]
+
+[tool.poetry.dependencies]
+python = "^3.8.1"
+diffusers = "^0.14.0"
+torch = "^2.0.0"
+transformers = "^4.27.1"
+accelerate = "^0.17.1"
+pika = "^1.3.1"
+
+
+[tool.poetry.group.dev.dependencies]
+autopep8 = "^2.0.2"
+flake8 = "^6.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
