@@ -1,8 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { StyleSheet, View, Image, Text, Dimensions, TouchableOpacity } from 'react-native';
 import Canvas from 'react-native-canvas';
+import * as FileSystem from 'expo-file-system';
 
 const { width } = Dimensions.get("window")
+
 
 export default function AddMaskScreen({ navigation, route }) {
     const canvasRef = useRef(null);
@@ -48,6 +50,25 @@ export default function AddMaskScreen({ navigation, route }) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     };
 
+    const maskFilename = (f) => {
+        let [root, ext] = f.split('.')
+        let ff = root.split('/').reverse()[0]
+        ff = ff + '_mask'
+        return [ff, ext].join('.')
+    }
+
+    const handleSaveImage = async () => {
+        const canvas = canvasRef.current;
+        let blobBase64 = await canvas.toDataURL();
+        blobBase64 = blobBase64.split(',')[1]
+        const fileName = maskFilename(route.params.imageUri); // Replace with your desired file name
+        const fileUri = `${FileSystem.documentDirectory}/${fileName}`;
+        await FileSystem.writeAsStringAsync(fileUri, blobBase64, {
+            encoding: FileSystem.EncodingType.Base64,
+        });
+        console.log(fileUri)
+    };
+
     return (
         <View style={styles.container}>
             <Image
@@ -78,7 +99,7 @@ export default function AddMaskScreen({ navigation, route }) {
                 <TouchableOpacity onPress={handleClearCanvas} style={styles.button} >
                     <Text style={styles.buttonText}>Clear</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleClearCanvas} style={styles.button} >
+                <TouchableOpacity onPress={handleSaveImage} style={styles.button} >
                     <Text style={styles.buttonText}>Save</Text>
                 </TouchableOpacity>
             </View>
