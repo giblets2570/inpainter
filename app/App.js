@@ -3,23 +3,10 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createStackNavigator } from '@react-navigation/stack'
 import TakePhotoScreen from './TakePhotoScreen';
 import AddMaskScreen from './AddMaskScreen';
-
-console.log(AddMaskScreen)
+import GetResultScreen from './GetResultScreen';
 
 const Root = createStackNavigator()
 const { width } = Dimensions.get('window')
-
-const Screen2 = ({ navigation, route }) => {
-  return <View style={styles.screen}>
-    <Image source={{ uri: route.params.imageUri }} style={styles.image} />
-    <TouchableOpacity
-      title="Go to Screen 1"
-      onPress={() => {
-        navigation.pop()
-      }}
-    />
-  </View>
-}
 
 export default function App() {
   return (
@@ -27,6 +14,7 @@ export default function App() {
       <Root.Navigator>
         <Root.Screen component={TakePhotoScreen} name='TakePhotoScreen'></Root.Screen>
         <Root.Screen component={AddMaskScreen} name='AddMaskScreen'></Root.Screen>
+        <Root.Screen component={GetResultScreen} name='GetResultScreen'></Root.Screen>
       </Root.Navigator>
     </NavigationContainer>
   );

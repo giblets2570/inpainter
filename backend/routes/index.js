@@ -26,12 +26,11 @@ router.post('/', upload.array('images[]', maxCount = 2), async function (req, re
 router.get('/job/:jobId', function (req, res, next) {
   const jobId = req.params.jobId
   if (memory[jobId] === undefined) {
-    return res.send(`There is no job with ${jobId}`)
+    return res.json({ message: `There is no job with ${jobId}` })
   }
   if (memory[jobId].status == 'PENDING') {
-    return res.send('Pending')
+    return res.json({ message: 'Pending' })
   }
-  console.log(memory)
   return res.sendFile(memory[jobId].finished_filepath)
 });
 

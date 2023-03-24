@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { StyleSheet, View, Image, Text, Dimensions, TouchableOpacity } from 'react-native';
 import Canvas from 'react-native-canvas';
 import * as FileSystem from 'expo-file-system';
+import uuid from 'react-native-uuid';
+
 
 const { width } = Dimensions.get("window")
 
@@ -9,6 +11,7 @@ const { width } = Dimensions.get("window")
 export default function AddMaskScreen({ navigation, route }) {
     const canvasRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [maskUri, setMaskUri] = useState(null);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -18,6 +21,13 @@ export default function AddMaskScreen({ navigation, route }) {
             context.canvas.height = width;
         }
     }, [canvasRef]);
+
+
+    useEffect(() => {
+        if (maskUri !== null) {
+            navigation.push('GetResultScreen', { maskUri: maskUri, imageUri: route.params.imageUri })
+        }
+    }, [maskUri])
 
 
     // Handle starting a new drawing path
@@ -53,7 +63,7 @@ export default function AddMaskScreen({ navigation, route }) {
     const maskFilename = (f) => {
         let [root, ext] = f.split('.')
         let ff = root.split('/').reverse()[0]
-        ff = ff + '_mask'
+        ff = ff + uuid.v4() + '_mask'
         return [ff, ext].join('.')
     }
 
@@ -66,7 +76,7 @@ export default function AddMaskScreen({ navigation, route }) {
         await FileSystem.writeAsStringAsync(fileUri, blobBase64, {
             encoding: FileSystem.EncodingType.Base64,
         });
-        console.log(fileUri)
+        setMaskUri(fileUri)
     };
 
     return (
@@ -75,9 +85,6 @@ export default function AddMaskScreen({ navigation, route }) {
                 style={styles.image}
                 source={{ uri: route.params.imageUri }} // Replace with your image source
                 resizeMode="contain"
-                onTouchStart={() => console.log('onTouchStart')}
-                onTouchMove={() => console.log('onTouchMove')}
-                onTouchEnd={() => console.log('onTouchEnd')}
             />
 
 
