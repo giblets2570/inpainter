@@ -7,4 +7,4 @@ This app lets you take a photo, select a part of the photo to replace and have s
 ![Alt text](assets/take-photo.jpeg "Take a photo")
 ![Alt text](assets/mask.jpeg "Circle the part to change")
 ![Alt text](assets/choose-prompt.jpeg "Choose a prompt")
-![Alt text](assets/Result.jpeg "Get the result")
+![Alt text](assets/result.jpeg "Get the result")
