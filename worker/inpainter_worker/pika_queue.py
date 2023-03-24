@@ -59,9 +59,6 @@ for method_frame, properties, body in channel.consume('job_request'):
 
     channel.basic_publish('', 'job_complete', json.dumps(
         {'filepath': saved_filepath, 'job_id': job_id}))
-    # Escape out of the loop after 10 messages
-    if method_frame.delivery_tag == 10:
-        break
 
 # Cancel the consumer and return any pending messages
 requeued_messages = channel.cancel()
