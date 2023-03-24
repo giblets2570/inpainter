@@ -16,22 +16,26 @@ router.post('/', upload.array('images[]', maxCount = 2), async function (req, re
   const jobId = uuidv4()
   const payload = { imageFile: imageFilepath, maskFile: maskFilepath, prompt: req.body.prompt, jobId }
   await sendMessage(JSON.stringify(payload))
-  memory[jobId] = {
+
+  await memory.set(jobId, {
     status: 'PENDING',
     payload: payload
-  }
+  })
   res.json({ message: 'success', ...payload });
 });
 
-router.get('/job/:jobId', function (req, res, next) {
+router.get('/job/:jobId', async function (req, res, next) {
   const jobId = req.params.jobId
-  if (memory[jobId] === undefined) {
-    return res.json({ message: `There is no job with ${jobId}` })
+  try {
+    const memObj = await memory.get(jobId)
+    if (memObj.status == 'PENDING') {
+      return res.json({ message: 'Pending' })
+    }
+    return res.sendFile(memObj.finished_filepath)
+  } catch (e) {
+    console.log(e)
+    return res.status(404).json({ message: `There is no job with ${jobId}` })
   }
-  if (memory[jobId].status == 'PENDING') {
-    return res.json({ message: 'Pending' })
-  }
-  return res.sendFile(memory[jobId].finished_filepath)
 });
 
 

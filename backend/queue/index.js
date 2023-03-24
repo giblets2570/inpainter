@@ -22,11 +22,13 @@ const receiveMessages = async () => {
     try {
         const subscription = await broker.subscribe(sub);
         subscription
-            .on('message', function (message, content, ackOrNack) {
+            .on('message', async function (message, content, ackOrNack) {
                 ackOrNack();
                 content = JSON.parse(content)
-                memory[content.job_id].status = 'SUCCESS'
-                memory[content.job_id].finished_filepath = content.filepath
+                const memObj = await memory.get(content.job_id)
+                memObj.status = 'SUCCESS'
+                memObj.finished_filepath = content.filepath
+                await memory.set(content.job_id, memObj)
             })
             .on('error', console.error);
         console.log('Started rabbitmq listening')
