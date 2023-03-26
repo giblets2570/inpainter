@@ -1,120 +1,157 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ActivityIndicator, Dimensions, Image, Keyboard } from 'react-native';
 
-
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, Button, Dimensions, Image, Keyboard } from 'react-native';
-
-const { width } = Dimensions.get("window")
-
+const { width } = Dimensions.get('window')
 
 export default function GetResultScreen({ navigation, route }) {
-    const { imageUri, maskUri } = route.params
-
-    const [status, setStatus] = useState("SETTINGPROMPT")
-    const [prompt, setPrompt] = useState("")
-    const [finalPrompt, setFinalPrompt] = useState("")
+    const { imageUri, maskUri, prompt } = route.params
+    const [status, setStatus] = useState('SETTING_PROMPT')
     const [jobId, setJobId] = useState(null)
+    const [isLoading, setIsLoading] = useState(false)
 
-    const requestJobStatus = async () => {
-        if (jobId !== null) {
-            let response = await fetch(`http://192.168.1.25:8888/job/${jobId}`)
+    const baseUrl = process.env.BASE_URL
+
+    const fetchJobStatus = async () => {
+        if (jobId) {
+            const response = await fetch(`${baseUrl}/job/${jobId}`)
             try {
                 await response.json()
-                // if this doesnt failed, its not an image
-                await new Promise((resolve) => {
-                    setTimeout(resolve, 2000)
-                })
-                requestJobStatus()
-            } catch (e) {
-                setStatus("COMPLETE")
+                await new Promise(resolve => setTimeout(resolve, 2000))
+                fetchJobStatus()
+            } catch (error) {
+                setStatus('COMPLETE')
+                setIsLoading(false)
             }
         }
     }
 
     useEffect(() => {
-        requestJobStatus()
+        fetchJobStatus()
     }, [jobId])
 
     useEffect(() => {
-        if (finalPrompt === '') {
-            return
-        }
-        const uploadFiles = async () => {
-            const url = 'http://192.168.1.25:8888/'
+        if (prompt !== '') {
+            const uploadFiles = async () => {
 
-            const image = {
-                uri: imageUri,
-                type: 'image/jpeg',
-                name: 'image.jpg',
-            };
-
-            const imageMask = {
-                uri: maskUri,
-                type: 'image/jpeg',
-                name: 'image_mask.jpg',
-            };
-
-
-            const body = new FormData();
-            body.append('authToken', 'secret');
-            body.append('images[]', image);
-            body.append('images[]', imageMask);
-            body.append('prompt', finalPrompt);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', url);
-            xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4) {
-                    let { jobId } = JSON.parse(xhr.responseText);
-                    console.log(jobId)
-                    setJobId(jobId)
+                const image = {
+                    uri: imageUri,
+                    type: 'image/jpeg',
+                    name: 'image.jpg',
                 }
-            };
-            xhr.send(body);
-        }
-        uploadFiles()
-    }, [finalPrompt])
 
-    return <View>
-        <TextInput
-            style={styles.textInput}
-            value={prompt}
-            onChangeText={(newText) => setPrompt(newText)}
-            placeholder="Write prompt here..."
-        />
-        {
+                const imageMask = {
+                    uri: maskUri,
+                    type: 'image/jpeg',
+                    name: 'image_mask.jpg',
+                }
 
-            prompt && (<TouchableOpacity
-                onPress={() => { setFinalPrompt(prompt); setJobId(null); setStatus("PENDING"); Keyboard.dismiss() }}
-                style={styles.button}
-            >
-                <Text style={styles.buttonText}>Use prompt</Text>
-            </TouchableOpacity>)
+                const body = new FormData()
+                body.append('authToken', 'secret')
+                body.append('images[]', image)
+                body.append('images[]', imageMask)
+                body.append('prompt', prompt)
+
+                setIsLoading(true)
+
+                const xhr = new XMLHttpRequest()
+                xhr.open('POST', baseUrl)
+                xhr.onreadystatechange = () => {
+                    if (xhr.readyState === 4) {
+                        const { jobId } = JSON.parse(xhr.responseText)
+                        setJobId(jobId)
+                    }
+                }
+                xhr.send(body)
+            }
+            uploadFiles()
         }
-        <Text>{finalPrompt}</Text>
-        {jobId && <Text>{jobId}</Text>}
-        {status === 'COMPLETE' && <Image
-            style={styles.image}
-            source={{ uri: `http://192.168.1.25:8888/job/${jobId}` }} // Replace with your image source
-            resizeMode="contain"
-        />}
-    </View>
+    }, [prompt])
+
+    return (
+        <View style={styles.container}>
+            {/* <View style={styles.header}>
+                <Text style={styles.headerTitle}>Get Result</Text>
+            </View> */}
+            <View style={styles.content}>
+                {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#4F84C4" />
+                    </View>
+                ) : null}
+                {status === 'COMPLETE' && jobId ? (
+                    <View style={styles.imageContainer}>
+                        <Image style={styles.image} source={{ uri: `${baseUrl}/job/${jobId}` }} resizeMode="cover" />
+                    </View>
+
+                ) : null}
+            </View>
+        </View>
+    )
 }
 
-
 const styles = StyleSheet.create({
-    textInput: { fontSize: 24, color: 'steelblue' },
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    header: {
+        backgroundColor: '#4F84C4',
+        height: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    content: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+    },
+    textInput: {
+        fontSize: 24,
+        color: 'steelblue',
+        borderBottomWidth: 1,
+        borderBottomColor: '#CCCCCC',
+        paddingBottom: 10,
+        marginBottom: 20,
+    },
     button: {
         backgroundColor: '#4F84C4',
         borderRadius: 20,
-        padding: 10,
-        marginHorizontal: 20,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
     },
     buttonText: {
         color: '#FFFFFF',
         fontSize: 18,
     },
+    promptContainer: {
+        backgroundColor: '#EEEEEE',
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 20,
+    },
+    promptText: {
+        fontSize: 16,
+        color: '#333333',
+    },
+    loadingContainer: {
+        marginTop: 20,
+        marginBottom: 30,
+    },
+    imageContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     image: {
-        width: width,
-        height: width
+        width: width - 40,
+        height: width - 40,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#CCCCCC',
     },
 })

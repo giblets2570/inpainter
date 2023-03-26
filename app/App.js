@@ -12,9 +12,9 @@ export default function App() {
   return (
     <NavigationContainer>
       <Root.Navigator>
-        <Root.Screen component={TakePhotoScreen} name='TakePhotoScreen'></Root.Screen>
-        <Root.Screen component={AddMaskScreen} name='AddMaskScreen'></Root.Screen>
-        <Root.Screen component={GetResultScreen} name='GetResultScreen'></Root.Screen>
+        <Root.Screen component={TakePhotoScreen} name='Photo Screen'></Root.Screen>
+        <Root.Screen component={AddMaskScreen} name='Select area'></Root.Screen>
+        <Root.Screen component={GetResultScreen} name='Result'></Root.Screen>
       </Root.Navigator>
     </NavigationContainer>
   );
