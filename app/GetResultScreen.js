@@ -1,67 +1,129 @@
 import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, ActivityIndicator, Dimensions, Image, Keyboard } from 'react-native';
-const { width } = Dimensions.get('window')
+// import storage from '@react-native-firebase/storage';
+import { ref, uploadBytes } from "firebase/storage";
+import { storage, firestore } from './firebaseConfig'
+import { addDoc, collection } from "firebase/firestore";
 
+// import DeviceInfo from 'react-native-device-info';
+import uuid from 'react-native-uuid';
+
+
+const { width } = Dimensions.get('window')
 const BASE_URL = 'http://192.168.1.25:8888'
+
+
 
 export default function GetResultScreen({ navigation, route }) {
     const { imageUri, maskUri, prompt } = route.params
     const [status, setStatus] = useState('SETTING_PROMPT')
     const [jobId, setJobId] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
+    const [filesUploaded, setFilesUploaded] = useState(null)
 
-    const fetchJobStatus = async () => {
-        if (jobId) {
-            const response = await fetch(`${BASE_URL}/job/${jobId}`)
-            try {
-                await response.json()
-                await new Promise(resolve => setTimeout(resolve, 2000))
-                fetchJobStatus()
-            } catch (error) {
-                setStatus('COMPLETE')
-                setIsLoading(false)
-            }
+
+    const uploadFilestoStorage = async () => {
+        const userId = '1'  // this needs to use auth or something
+        const fileId = uuid.v4()
+        const imagepath = `inpainter/images/${userId}/${fileId}.jpg`
+        const maskpath = `inpainter/masks/${userId}/${fileId}.jpg`
+        const storageImageRef = ref(storage, imagepath);
+        const storageMaskRef = ref(storage, maskpath);
+        const [imageFile, maskFile] = await Promise.all([fetch(imageUri), fetch(maskUri)])
+        const [imageBlob, maskBlob] = await Promise.all([imageFile.blob(), maskFile.blob()])
+        const uploadResults = await Promise.all([
+            uploadBytes(storageImageRef, imageBlob),
+            uploadBytes(storageMaskRef, maskBlob)
+        ])
+        const [imageRemoteUri, maskRemoteUri] = uploadResults.map((value) => {
+            return `${value.metadata.bucket}/${value.metadata.fullPath}`
+        })
+        console.log(imageRemoteUri, maskRemoteUri)
+        setFilesUploaded({
+            imageUri: imageRemoteUri,
+            maskUri: maskRemoteUri
+        })
+    }
+
+    useEffect(() => {
+        uploadFilestoStorage()
+    }, [])
+
+    const uploadDataToStorage = async () => {
+        try {
+            const docRef = await addDoc(collection(firestore, "jobs"), {
+                imageUri: filesUploaded.imageUri,
+                maskUri: filesUploaded.maskUri,
+                prompt: prompt,
+                status: 'REQUESTED'
+            });
+
+            console.log("Document written with ID: ", docRef.id);
+            setJobId(docRef.id)
+        } catch (e) {
+            console.error("Error adding document: ", e);
         }
     }
 
     useEffect(() => {
-        fetchJobStatus()
-    }, [jobId])
+        if (filesUploaded !== null) {
+            uploadDataToStorage()
+        }
+    }, [filesUploaded])
+
+
+    const fetchJobStatus = async () => {
+        const response = await fetch(`${BASE_URL}/job/${jobId}`)
+        try {
+            await response.json()
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            fetchJobStatus()
+        } catch (error) {
+            setStatus('COMPLETE')
+            setIsLoading(false)
+        }
+    }
 
     useEffect(() => {
+        if (jobId) {
+            fetchJobStatus()
+        }
+    }, [jobId])
+
+    const uploadFiles = async () => {
+
+        // const image = {
+        //     uri: imageUri,
+        //     type: 'image/jpeg',
+        //     name: 'image.jpg',
+        // }
+
+        // const imageMask = {
+        //     uri: maskUri,
+        //     type: 'image/jpeg',
+        //     name: 'image_mask.jpg',
+        // }
+
+        // const body = new FormData()
+        // body.append('authToken', 'secret')
+        // body.append('images[]', image)
+        // body.append('images[]', imageMask)
+        // body.append('prompt', prompt)
+
+        // setIsLoading(true)
+
+        // const xhr = new XMLHttpRequest()
+        // xhr.open('POST', BASE_URL)
+        // xhr.onreadystatechange = () => {
+        //     if (xhr.readyState === 4) {
+        //         const { jobId } = JSON.parse(xhr.responseText)
+        //         setJobId(jobId)
+        //     }
+        // }
+        // xhr.send(body)
+    }
+    useEffect(() => {
         if (prompt !== '') {
-            const uploadFiles = async () => {
-
-                const image = {
-                    uri: imageUri,
-                    type: 'image/jpeg',
-                    name: 'image.jpg',
-                }
-
-                const imageMask = {
-                    uri: maskUri,
-                    type: 'image/jpeg',
-                    name: 'image_mask.jpg',
-                }
-
-                const body = new FormData()
-                body.append('authToken', 'secret')
-                body.append('images[]', image)
-                body.append('images[]', imageMask)
-                body.append('prompt', prompt)
-
-                setIsLoading(true)
-
-                const xhr = new XMLHttpRequest()
-                xhr.open('POST', BASE_URL)
-                xhr.onreadystatechange = () => {
-                    if (xhr.readyState === 4) {
-                        const { jobId } = JSON.parse(xhr.responseText)
-                        setJobId(jobId)
-                    }
-                }
-                xhr.send(body)
-            }
             uploadFiles()
         }
     }, [prompt])
