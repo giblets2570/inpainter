@@ -6,11 +6,16 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 from copy import deepcopy
 
-connection = pika.BlockingConnection()
+params = pika.ConnectionParameters(heartbeat=600,
+                                   blocked_connection_timeout=300)
+
+connection = pika.BlockingConnection(params)
 channel = connection.channel()
 
 
 for method_frame, properties, body in channel.consume('job_request'):
+    if method_frame is None:
+        connection.heaty
     # Display the message parts and acknowledge the message
     channel.basic_ack(method_frame.delivery_tag)
 

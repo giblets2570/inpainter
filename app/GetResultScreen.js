@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, View, TouchableOpacity, TextInput, ActivityIndicator, Dimensions, Image, Keyboard } from 'react-native';
-
 const { width } = Dimensions.get('window')
+
+const BASE_URL = 'http://192.168.1.25:8888'
 
 export default function GetResultScreen({ navigation, route }) {
     const { imageUri, maskUri, prompt } = route.params
@@ -9,11 +10,9 @@ export default function GetResultScreen({ navigation, route }) {
     const [jobId, setJobId] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
 
-    const baseUrl = process.env.BASE_URL
-
     const fetchJobStatus = async () => {
         if (jobId) {
-            const response = await fetch(`${baseUrl}/job/${jobId}`)
+            const response = await fetch(`${BASE_URL}/job/${jobId}`)
             try {
                 await response.json()
                 await new Promise(resolve => setTimeout(resolve, 2000))
@@ -54,7 +53,7 @@ export default function GetResultScreen({ navigation, route }) {
                 setIsLoading(true)
 
                 const xhr = new XMLHttpRequest()
-                xhr.open('POST', baseUrl)
+                xhr.open('POST', BASE_URL)
                 xhr.onreadystatechange = () => {
                     if (xhr.readyState === 4) {
                         const { jobId } = JSON.parse(xhr.responseText)
@@ -75,12 +74,13 @@ export default function GetResultScreen({ navigation, route }) {
             <View style={styles.content}>
                 {isLoading ? (
                     <View style={styles.loadingContainer}>
+                        <Text>Loading the new image...</Text>
                         <ActivityIndicator size="large" color="#4F84C4" />
                     </View>
                 ) : null}
                 {status === 'COMPLETE' && jobId ? (
                     <View style={styles.imageContainer}>
-                        <Image style={styles.image} source={{ uri: `${baseUrl}/job/${jobId}` }} resizeMode="cover" />
+                        <Image style={styles.image} source={{ uri: `${BASE_URL}/job/${jobId}` }} resizeMode="cover" />
                     </View>
 
                 ) : null}
