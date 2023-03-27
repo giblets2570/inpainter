@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ActivityIndicator, Dimensions, Image, Keyboard } from 'react-native';
-// import storage from '@react-native-firebase/storage';
-import { ref, uploadBytes } from "firebase/storage";
+import { StyleSheet, Text, View, ActivityIndicator, Dimensions, Image } from 'react-native';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage, firestore } from './firebaseConfig'
-import { addDoc, collection } from "firebase/firestore";
-
-// import DeviceInfo from 'react-native-device-info';
+import { addDoc, collection, onSnapshot, doc } from "firebase/firestore";
 import uuid from 'react-native-uuid';
 
 
 const { width } = Dimensions.get('window')
-const BASE_URL = 'http://192.168.1.25:8888'
 
 
 
 export default function GetResultScreen({ navigation, route }) {
     const { imageUri, maskUri, prompt } = route.params
-    const [status, setStatus] = useState('SETTING_PROMPT')
     const [jobId, setJobId] = useState(null)
-    const [isLoading, setIsLoading] = useState(false)
     const [filesUploaded, setFilesUploaded] = useState(null)
+    const [resultRemoteUri, setResultRemoteUri] = useState(null)
+    const [resultUri, setResultUri] = useState(null)
 
 
     const uploadFilestoStorage = async () => {
@@ -60,6 +56,7 @@ export default function GetResultScreen({ navigation, route }) {
 
             console.log("Document written with ID: ", docRef.id);
             setJobId(docRef.id)
+
         } catch (e) {
             console.error("Error adding document: ", e);
         }
@@ -72,80 +69,62 @@ export default function GetResultScreen({ navigation, route }) {
     }, [filesUploaded])
 
 
-    const fetchJobStatus = async () => {
-        const response = await fetch(`${BASE_URL}/job/${jobId}`)
-        try {
-            await response.json()
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            fetchJobStatus()
-        } catch (error) {
-            setStatus('COMPLETE')
-            setIsLoading(false)
-        }
+    const waitForUpdate = async () => {
+        const docRef = doc(firestore, "jobs", jobId)
+        const unsub = onSnapshot(docRef, (mydoc) => {
+            const docData = mydoc.data()
+            console.log(docData)
+            if (docData.status === 'COMPLETED') {
+                unsub()
+                setResultRemoteUri(docData.resultUri)
+            }
+        })
     }
 
     useEffect(() => {
-        if (jobId) {
-            fetchJobStatus()
+        if (jobId !== null) {
+            waitForUpdate()
         }
     }, [jobId])
 
-    const uploadFiles = async () => {
 
-        // const image = {
-        //     uri: imageUri,
-        //     type: 'image/jpeg',
-        //     name: 'image.jpg',
-        // }
-
-        // const imageMask = {
-        //     uri: maskUri,
-        //     type: 'image/jpeg',
-        //     name: 'image_mask.jpg',
-        // }
-
-        // const body = new FormData()
-        // body.append('authToken', 'secret')
-        // body.append('images[]', image)
-        // body.append('images[]', imageMask)
-        // body.append('prompt', prompt)
-
-        // setIsLoading(true)
-
-        // const xhr = new XMLHttpRequest()
-        // xhr.open('POST', BASE_URL)
-        // xhr.onreadystatechange = () => {
-        //     if (xhr.readyState === 4) {
-        //         const { jobId } = JSON.parse(xhr.responseText)
-        //         setJobId(jobId)
-        //     }
-        // }
-        // xhr.send(body)
+    const downloadResult = async () => {
+        const resultRef = ref(storage, 'gs://' + resultRemoteUri);
+        console.log('downloading result')
+        const downloadUrl = await getDownloadURL(resultRef)
+        setResultUri(downloadUrl)
     }
-    useEffect(() => {
-        if (prompt !== '') {
-            uploadFiles()
-        }
-    }, [prompt])
 
+    useEffect(() => {
+        if (resultRemoteUri !== null) {
+            downloadResult()
+        }
+    }, [resultRemoteUri])
+
+    let loadingText = null
+    if (filesUploaded === null) {
+        loadingText = <Text>Uploading images...</Text>
+    } else if (jobId === null) {
+        loadingText = <Text>Creating job...</Text>
+    } else if (resultRemoteUri == null) {
+        loadingText = <Text>Waiting for response...</Text>
+    } else if (resultUri == null) {
+        loadingText = <Text>Downloading result...</Text>
+    }
     return (
         <View style={styles.container}>
-            {/* <View style={styles.header}>
-                <Text style={styles.headerTitle}>Get Result</Text>
-            </View> */}
             <View style={styles.content}>
-                {isLoading ? (
-                    <View style={styles.loadingContainer}>
-                        <Text>Loading the new image...</Text>
-                        <ActivityIndicator size="large" color="#4F84C4" />
-                    </View>
-                ) : null}
-                {status === 'COMPLETE' && jobId ? (
+                {resultUri ? (
                     <View style={styles.imageContainer}>
-                        <Image style={styles.image} source={{ uri: `${BASE_URL}/job/${jobId}` }} resizeMode="cover" />
+                        <Image style={styles.image} source={{ uri: resultUri }} resizeMode="cover" />
                     </View>
 
-                ) : null}
+                ) : (
+                    <View style={styles.loadingContainer}>
+                        {loadingText}
+                        <ActivityIndicator size="large" color="#4F84C4" />
+                    </View>
+                )}
             </View>
         </View>
     )
