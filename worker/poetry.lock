@@ -862,6 +862,18 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "joblib"
+version = "1.2.0"
+description = "Lightweight pipelining with Python functions"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "joblib-1.2.0-py3-none-any.whl", hash = "sha256:091138ed78f800342968c523bdde947e7a305b8594b910a0fea2ab83c3c6d385"},
+    {file = "joblib-1.2.0.tar.gz", hash = "sha256:e1cee4a79e4af22881164f218d4311f60074197fb707e082e803b61f6d137018"},
+]
+
+[[package]]
 name = "lit"
 version = "15.0.7"
 description = "A Software Testing Tool"
@@ -2100,4 +2112,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "c9c1e07e7d55f5b8139df42172668e13844d38593e00b979039beb8d6ee1a087"
+content-hash = "bf23edc503c9f01dabf71e7647daadee43f4a132a2069302cb2b0d2191bbe427"

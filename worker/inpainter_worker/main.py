@@ -1,5 +1,4 @@
 import pika
-import json
 from PIL import Image
 from inpainter_worker.generator import generate_image
 from tempfile import NamedTemporaryFile
@@ -8,18 +7,8 @@ from inpainter_worker.storage import upload_blob, download_blob
 from dotenv import load_dotenv
 import os
 import firebase_admin
-from firebase_admin import firestore
-
-firebaseConfig = {
-    "apiKey": "AIzaSyDhkWA2FK7anvmRju7JcmklHROPSTFK6co",
-    "authDomain": "inpainter-a8631.firebaseapp.com",
-    "projectId": "inpainter-a8631",
-    "databaseURL": 'https://inpainter-a8631.firebaseio.com',
-    "storageBucket": "inpainter-a8631.appspot.com",
-    "messagingSenderId": "363570674075",
-    "appId": "1:363570674075:web:cbfbb310aef1f4adf1893e",
-    "measurementId": "G-JB6NKW84JK"
-}
+from firebase_admin import firestore, credentials
+from pathlib import Path
 
 
 def process_job(job_id, app):
@@ -28,16 +17,15 @@ def process_job(job_id, app):
     doc_ref = db.collection('jobs').document(job_id)
     doc = doc_ref.get().to_dict()
 
-    # download both images
     with NamedTemporaryFile('wb', delete=False, suffix='.jpg') as fp:
         image_path = fp.name
         bucket_name, source_blob_name = doc['imageUri'].split('/', 1)
-        download_blob(bucket_name, source_blob_name, image_path)
+        download_blob(app, source_blob_name, image_path)
 
     with NamedTemporaryFile('wb', delete=False, suffix='.jpg') as fp:
         mask_path = fp.name
         bucket_name, source_blob_name = doc['maskUri'].split('/', 1)
-        download_blob(bucket_name, source_blob_name, mask_path)
+        download_blob(app, source_blob_name, mask_path)
 
     # create the image and mask Pillow objects
     image = Image.open(image_path).convert("RGB").resize(
@@ -52,13 +40,19 @@ def process_job(job_id, app):
 
     # upload the job
     # replace the masks blob name
-    dest_blob_name = source_blob_name.replace('/masks/', '/results/')
-    upload_blob(bucket_name, saved_filepath, dest_blob_name)
+    bucket_name, mask_blob_name = doc['maskUri'].split('/', 1)
+    dest_blob_name = mask_blob_name.replace('/masks/', '/results/')
+    upload_blob(app, saved_filepath, dest_blob_name)
 
     new_doc = {**doc, 'resultUri': f'{bucket_name}/{dest_blob_name}',
                'status': 'COMPLETED'}
 
     db.collection('jobs').document(job_id).set(new_doc)
+
+    # now delete all files
+    Path(saved_filepath).unlink(missing_ok=True)
+    Path(image_path).unlink(missing_ok=True)
+    Path(mask_path).unlink(missing_ok=True)
 
 
 def main():
@@ -71,7 +65,10 @@ def main():
     channel = connection.channel()
     print('created channel')
 
-    app = firebase_admin.initialize_app(options=firebaseConfig)
+    cred = credentials.Certificate(
+        str(Path(__file__).parent / "serviceAccountKey.json"))
+
+    app = firebase_admin.initialize_app(cred)
 
     for method_frame, properties, body in channel.consume('job_request'):
         if method_frame is None:
@@ -85,9 +82,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-    # job_id = 'S1fbnD2ZBcl5zx6yICEl'
-
-    # result = process_job(job_id, app)
-
-    # print(result)

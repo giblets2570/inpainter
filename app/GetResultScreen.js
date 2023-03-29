@@ -4,6 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage, firestore } from './firebaseConfig'
 import { addDoc, collection, onSnapshot, doc } from "firebase/firestore";
 import uuid from 'react-native-uuid';
+import BottomButtons from './BottomButtons';
 
 
 const { width } = Dimensions.get('window')
@@ -11,45 +12,37 @@ const { width } = Dimensions.get('window')
 
 
 export default function GetResultScreen({ navigation, route }) {
-    const { imageUri, maskUri, prompt } = route.params
+    const { imageRemoteUri, maskUri, prompt } = route.params
     const [jobId, setJobId] = useState(null)
-    const [filesUploaded, setFilesUploaded] = useState(null)
+    const [maskRemoteUri, setMaskRemoteUri] = useState(null)
     const [resultRemoteUri, setResultRemoteUri] = useState(null)
     const [resultUri, setResultUri] = useState(null)
 
 
-    const uploadFilestoStorage = async () => {
+    const uploadMasktoStorage = async () => {
         const userId = '1'  // this needs to use auth or something
         const fileId = uuid.v4()
-        const imagepath = `inpainter/images/${userId}/${fileId}.jpg`
-        const maskpath = `inpainter/masks/${userId}/${fileId}.jpg`
+        const imagepath = `inpainter/masks/${userId}/${fileId}.jpg`
         const storageImageRef = ref(storage, imagepath);
-        const storageMaskRef = ref(storage, maskpath);
-        const [imageFile, maskFile] = await Promise.all([fetch(imageUri), fetch(maskUri)])
-        const [imageBlob, maskBlob] = await Promise.all([imageFile.blob(), maskFile.blob()])
-        const uploadResults = await Promise.all([
-            uploadBytes(storageImageRef, imageBlob),
-            uploadBytes(storageMaskRef, maskBlob)
-        ])
-        const [imageRemoteUri, maskRemoteUri] = uploadResults.map((value) => {
-            return `${value.metadata.bucket}/${value.metadata.fullPath}`
-        })
-        console.log(imageRemoteUri, maskRemoteUri)
-        setFilesUploaded({
-            imageUri: imageRemoteUri,
-            maskUri: maskRemoteUri
-        })
+        const imageFile = await fetch(maskUri)
+        const imageBlob = await imageFile.blob()
+        const uploadResults = await uploadBytes(storageImageRef, imageBlob)
+        const maskRemoteUri = `${uploadResults.metadata.bucket}/${uploadResults.metadata.fullPath}`
+        setMaskRemoteUri(maskRemoteUri)
     }
 
+
     useEffect(() => {
-        uploadFilestoStorage()
+        console.log('uploading files')
+        uploadMasktoStorage()
+        return () => setMaskRemoteUri(null)
     }, [])
 
     const uploadDataToStorage = async () => {
         try {
             const docRef = await addDoc(collection(firestore, "jobs"), {
-                imageUri: filesUploaded.imageUri,
-                maskUri: filesUploaded.maskUri,
+                imageUri: imageRemoteUri,
+                maskUri: maskRemoteUri,
                 prompt: prompt,
                 status: 'REQUESTED'
             });
@@ -63,10 +56,12 @@ export default function GetResultScreen({ navigation, route }) {
     }
 
     useEffect(() => {
-        if (filesUploaded !== null) {
+        if (maskRemoteUri !== null) {
+            console.log('uploading to firestore')
             uploadDataToStorage()
+            return () => setJobId(null)
         }
-    }, [filesUploaded])
+    }, [maskRemoteUri])
 
 
     const waitForUpdate = async () => {
@@ -83,26 +78,29 @@ export default function GetResultScreen({ navigation, route }) {
 
     useEffect(() => {
         if (jobId !== null) {
+            console.log('waiting for update')
             waitForUpdate()
+            return () => setResultRemoteUri(null)
         }
     }, [jobId])
 
 
     const downloadResult = async () => {
         const resultRef = ref(storage, 'gs://' + resultRemoteUri);
-        console.log('downloading result')
         const downloadUrl = await getDownloadURL(resultRef)
         setResultUri(downloadUrl)
     }
 
     useEffect(() => {
         if (resultRemoteUri !== null) {
+            console.log('waiting for update')
             downloadResult()
+            return () => setResultUri(null)
         }
     }, [resultRemoteUri])
 
     let loadingText = null
-    if (filesUploaded === null) {
+    if (maskRemoteUri === null) {
         loadingText = <Text>Uploading images...</Text>
     } else if (jobId === null) {
         loadingText = <Text>Creating job...</Text>
@@ -126,6 +124,12 @@ export default function GetResultScreen({ navigation, route }) {
                     </View>
                 )}
             </View>
+            {resultUri && <BottomButtons
+                onPressFirst={() => navigation.pop()}
+                onPressSecond={() => navigation.popToTop()}
+                text1="Retry with same image"
+                text2="Take new image"
+            ></BottomButtons>}
         </View>
     )
 }

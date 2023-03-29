@@ -14,7 +14,7 @@ export default function App() {
       <Root.Navigator>
         <Root.Screen component={TakePhotoScreen} name='Photo Screen'></Root.Screen>
         <Root.Screen component={AddMaskScreen} name='Select area'></Root.Screen>
-        <Root.Screen component={GetResultScreen} name='Result'></Root.Screen>
+        <Root.Screen component={GetResultScreen} name='Result' options={{ headerLeft: () => null }}></Root.Screen>
       </Root.Navigator>
     </NavigationContainer>
   );

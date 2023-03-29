@@ -1,18 +1,25 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Image, Text, Dimensions, TextInput, KeyboardAvoidingView, Alert } from 'react-native';
+import { StyleSheet, View, Image, Text, Dimensions, TextInput, KeyboardAvoidingView, ActivityIndicator, Alert } from 'react-native';
 import Canvas from 'react-native-canvas';
 import * as FileSystem from 'expo-file-system';
 import uuid from 'react-native-uuid';
 import BottomButtons from './BottomButtons';
+import ImageResizer from '@bam.tech/react-native-image-resizer';
+import { ref, uploadBytes } from "firebase/storage";
+import { storage, firestore } from './firebaseConfig'
+
 
 const { width, height } = Dimensions.get("window")
 
 
 export default function AddMaskScreen({ navigation, route }) {
+
+    const { imageUri } = route.params
     const canvasRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [maskUri, setMaskUri] = useState(null);
     const [prompt, setPrompt] = useState('')
+    const [imageRemoteUri, setImageRemoteUri] = useState(null)
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -25,11 +32,29 @@ export default function AddMaskScreen({ navigation, route }) {
 
 
     useEffect(() => {
-        if (maskUri !== null) {
-            navigation.push('Result', { maskUri: maskUri, imageUri: route.params.imageUri, prompt: prompt })
+        if (maskUri !== null && imageRemoteUri !== null) {
+            navigation.push('Result', { maskUri: maskUri, imageRemoteUri: imageRemoteUri, prompt: prompt })
         }
-    }, [maskUri])
+    }, [maskUri, imageRemoteUri])
 
+
+    const uploadImagetoStorage = async () => {
+        const userId = '1'  // this needs to use auth or something
+        const fileId = uuid.v4()
+        const imagepath = `inpainter/images/${userId}/${fileId}.jpg`
+        const storageImageRef = ref(storage, imagepath);
+        const imageFile = await fetch(imageUri)
+        const imageBlob = await imageFile.blob()
+        const uploadResults = await uploadBytes(storageImageRef, imageBlob)
+        const imageRemoteUri = `${uploadResults.metadata.bucket}/${uploadResults.metadata.fullPath}`
+        setImageRemoteUri(imageRemoteUri)
+    }
+
+    useEffect(() => {
+        if (!imageRemoteUri) {
+            uploadImagetoStorage()
+        }
+    }, [])
 
     // Handle starting a new drawing path
     const handleStartDrawing = ({ nativeEvent }) => {
@@ -76,10 +101,11 @@ export default function AddMaskScreen({ navigation, route }) {
         const canvas = canvasRef.current;
         let blobBase64 = await canvas.toDataURL();
         blobBase64 = blobBase64.split(',')[1]
-        const fileName = maskFilename(route.params.imageUri); // Replace with your desired file name
+        const fileName = maskFilename(imageUri); // Replace with your desired file name
         const fileUri = `${FileSystem.documentDirectory}/${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, blobBase64, {
             encoding: FileSystem.EncodingType.Base64,
+
         });
         setMaskUri(fileUri)
     };
@@ -88,7 +114,7 @@ export default function AddMaskScreen({ navigation, route }) {
         <View style={styles.container}>
             <Image
                 style={styles.image}
-                source={{ uri: route.params.imageUri }} // Replace with your image source
+                source={{ uri: imageUri }} // Replace with your image source
                 resizeMode="contain"
             />
 
@@ -112,6 +138,7 @@ export default function AddMaskScreen({ navigation, route }) {
                     placeholder="Write prompt here..."
                 />
             </KeyboardAvoidingView>
+            {maskUri && !imageRemoteUri && <ActivityIndicator size="large" color="#4F84C4" />}
             <BottomButtons
                 onPressFirst={handleClearCanvas}
                 onPressSecond={handleSaveImage}
