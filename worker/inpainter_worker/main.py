@@ -1,9 +1,9 @@
 import pika
 from PIL import Image
-from inpainter_worker.generator import generate_image
+from .generator import generate_image
 from tempfile import NamedTemporaryFile
-from inpainter_worker.shape_filler import fill
-from inpainter_worker.storage import upload_blob, download_blob
+from .shape_filler import fill
+from .storage import upload_blob, download_blob
 from dotenv import load_dotenv
 import os
 import firebase_admin
@@ -62,22 +62,25 @@ def main():
     connection = pika.BlockingConnection(params)
     print('created connection')
 
-    channel = connection.channel()
-    print('created channel')
-
     cred = credentials.Certificate(
         str(Path(__file__).parent / "serviceAccountKey.json"))
 
     app = firebase_admin.initialize_app(cred)
 
-    for method_frame, properties, body in channel.consume('job_request'):
-        if method_frame is None:
-            print('no messages')
-        # Display the message parts and acknowledge the message
-        channel.basic_ack(method_frame.delivery_tag)
+    while True:
+        channel = connection.channel()
+        print('created channel')
+        try:
+            for method_frame, properties, body in channel.consume('job_request'):
+                if method_frame is None:
+                    print('no messages')
+                # Display the message parts and acknowledge the message
+                channel.basic_ack(method_frame.delivery_tag)
 
-        job_id = body.decode()
-        process_job(job_id, app)
+                job_id = body.decode()
+                process_job(job_id, app)
+        except pika.exceptions.StreamLostError:
+            print('stream lost, restarting')
 
 
 if __name__ == '__main__':

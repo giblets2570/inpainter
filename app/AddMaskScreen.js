@@ -1,12 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Image, Text, Dimensions, TextInput, KeyboardAvoidingView, ActivityIndicator, Alert } from 'react-native';
+
+import { StyleSheet, View, Image, Dimensions, TextInput, KeyboardAvoidingView, ActivityIndicator, Alert } from 'react-native';
 import Canvas from 'react-native-canvas';
 import * as FileSystem from 'expo-file-system';
 import uuid from 'react-native-uuid';
 import BottomButtons from './BottomButtons';
-import ImageResizer from '@bam.tech/react-native-image-resizer';
-import { ref, uploadBytes } from "firebase/storage";
-import { storage, firestore } from './firebaseConfig'
+import { ref, uploadBytesResumable } from "firebase/storage";
+import { storage } from './firebaseConfig'
 
 
 const { width, height } = Dimensions.get("window")
@@ -18,8 +18,8 @@ export default function AddMaskScreen({ navigation, route }) {
     const canvasRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [maskUri, setMaskUri] = useState(null);
-    const [prompt, setPrompt] = useState('')
-    const [imageRemoteUri, setImageRemoteUri] = useState(null)
+    const [prompt, setPrompt] = useState('');
+    const [imageRemoteUriCache, setImageRemoteUriCache] = useState({});
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -32,10 +32,11 @@ export default function AddMaskScreen({ navigation, route }) {
 
 
     useEffect(() => {
-        if (maskUri !== null && imageRemoteUri !== null) {
-            navigation.push('Result', { maskUri: maskUri, imageRemoteUri: imageRemoteUri, prompt: prompt })
+        if (maskUri !== null && imageRemoteUriCache[imageUri]) {
+            const imageRemoteUri = imageRemoteUriCache[imageUri]
+            navigation.push('Result', { maskUri, imageRemoteUri, prompt })
         }
-    }, [maskUri, imageRemoteUri])
+    }, [maskUri, imageRemoteUriCache])
 
 
     const uploadImagetoStorage = async () => {
@@ -44,14 +45,19 @@ export default function AddMaskScreen({ navigation, route }) {
         const imagepath = `inpainter/images/${userId}/${fileId}.jpg`
         const storageImageRef = ref(storage, imagepath);
         const imageFile = await fetch(imageUri)
+        console.log('fetched the file')
         const imageBlob = await imageFile.blob()
-        const uploadResults = await uploadBytes(storageImageRef, imageBlob)
+        console.log('created the blob')
+        console.log('uploading image')
+        const uploadResults = await uploadBytesResumable(storageImageRef, imageBlob)
         const imageRemoteUri = `${uploadResults.metadata.bucket}/${uploadResults.metadata.fullPath}`
-        setImageRemoteUri(imageRemoteUri)
+        console.log('image uploaded')
+        setImageRemoteUriCache({ ...imageRemoteUriCache, [imageUri]: imageRemoteUri })
     }
 
     useEffect(() => {
-        if (!imageRemoteUri) {
+        if (!imageRemoteUriCache[imageUri]) {
+            console.log('i am about to try and upload the image')
             uploadImagetoStorage()
         }
     }, [])
@@ -77,7 +83,6 @@ export default function AddMaskScreen({ navigation, route }) {
 
     // Handle finishing the current drawing path
     const handleFinishDrawing = () => {
-        console.log('handleFinishDrawing')
         setIsDrawing(false);
     };
 
@@ -98,6 +103,9 @@ export default function AddMaskScreen({ navigation, route }) {
         if (prompt === '') {
             return Alert("Please set a prompt before saving!")
         }
+        console.log(imageUri)
+        console.log(imageRemoteUriCache)
+        console.log(imageRemoteUriCache[imageUri])
         const canvas = canvasRef.current;
         let blobBase64 = await canvas.toDataURL();
         blobBase64 = blobBase64.split(',')[1]
@@ -132,19 +140,19 @@ export default function AddMaskScreen({ navigation, route }) {
             </View>
             <KeyboardAvoidingView style={styles.content} behavior="position" enabled>
                 <TextInput
+                    multiline
                     style={styles.textInput}
                     value={prompt}
                     onChangeText={setPrompt}
                     placeholder="Write prompt here..."
                 />
             </KeyboardAvoidingView>
-            {maskUri && !imageRemoteUri && <ActivityIndicator size="large" color="#4F84C4" />}
+            {maskUri && !imageRemoteUriCache[imageUri] && <ActivityIndicator size="large" color="#4F84C4" />}
             <BottomButtons
                 onPressFirst={handleClearCanvas}
                 onPressSecond={handleSaveImage}
                 text1='Clear'
                 text2='Save'
-                onLayout={(evt) => console.log(evt.nativeEvent.layout)}
             />
         </View >
     );
@@ -152,9 +160,10 @@ export default function AddMaskScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#fff',
-        height: height - 64,
-        backgroundColor: '#F5FCFF',
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'white',
     },
     image: {
         width: width,
@@ -169,36 +178,16 @@ const styles = StyleSheet.create({
         position: 'absolute',
         right: 0,
         flex: 1,
+        top: 0,
         width: width,
         height: width,
     },
-    buttonContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'absolute',
-        bottom: 14,
-        width: width
-    },
-    button: {
-        backgroundColor: '#4F84C4',
-        // padding: 20,
-        height: '100%',
-        width: '50%'
-    },
-    buttonText: {
-        color: '#000000',
-        fontSize: 18,
-        textAlign: 'center',
-
-    },
     content: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 20,
-        backgroundColor: 'white'
+        alignItems: 'flex-start',
+        justifyContent: 'flex-start',
+        padding: 20,
+        backgroundColor: 'white',
     },
     textInput: {
         fontSize: 24,

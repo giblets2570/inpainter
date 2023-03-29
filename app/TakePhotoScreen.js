@@ -3,7 +3,6 @@ import { StyleSheet, Text, View, TouchableOpacity, Image, Platform } from 'react
 import { Camera } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import BottomButtons from './BottomButtons';
-import ImageResizer from '@bam.tech/react-native-image-resizer';
 
 
 export default function TakePhotoScreen({ navigation, route }) {
@@ -30,7 +29,9 @@ export default function TakePhotoScreen({ navigation, route }) {
 
     const takePicture = async () => {
         if (camera) {
+            console.log('taking the picture')
             const { uri } = await camera.takePictureAsync();
+            console.log('have the picture')
             setImageUri(uri);
         }
     };
@@ -45,16 +46,7 @@ export default function TakePhotoScreen({ navigation, route }) {
                 quality: 1,
             });
             if (!result.canceled) {
-                const resized = await ImageResizer.createResizedImage(
-                    result.uri,
-                    128,
-                    128,
-                    'PNG',
-                    80,
-                    0,
-                    null
-                )
-                setImageUri(resized.path);
+                setImageUri(result.uri);
             }
         }
     };
@@ -98,10 +90,5 @@ const styles = StyleSheet.create({
     camera: {
         flex: 1,
         aspectRatio: 1,
-    },
-    image: {
-        width: 300,
-        height: 300,
-        marginTop: 20,
     },
 });

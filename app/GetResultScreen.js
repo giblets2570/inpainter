@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, View, ActivityIndicator, Dimensions, Image } from 'react-native';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage, firestore } from './firebaseConfig'
 import { addDoc, collection, onSnapshot, doc } from "firebase/firestore";
 import uuid from 'react-native-uuid';
@@ -26,7 +26,7 @@ export default function GetResultScreen({ navigation, route }) {
         const storageImageRef = ref(storage, imagepath);
         const imageFile = await fetch(maskUri)
         const imageBlob = await imageFile.blob()
-        const uploadResults = await uploadBytes(storageImageRef, imageBlob)
+        const uploadResults = await uploadBytesResumable(storageImageRef, imageBlob)
         const maskRemoteUri = `${uploadResults.metadata.bucket}/${uploadResults.metadata.fullPath}`
         setMaskRemoteUri(maskRemoteUri)
     }

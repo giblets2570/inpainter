@@ -1,9 +1,9 @@
 import React from 'react';
 import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 
-const BottomButtons = ({ onPressFirst, onPressSecond, text1, text2, onLayout }) => {
+const BottomButtons = ({ onPressFirst, onPressSecond, text1, text2 }) => {
     return (
-        <View style={styles.container} onLayout={onLayout}>
+        <View style={styles.container}>
             <TouchableOpacity style={{ ...styles.button, backgroundColor: '#DC4731' }} onPress={onPressFirst}>
                 <Text style={styles.buttonText}>{text1}</Text>
             </TouchableOpacity>
