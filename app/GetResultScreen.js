@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, View, ActivityIndicator, Dimensions, Image } from 'react-native';
-import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { storage, firestore } from './firebaseConfig'
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage, firestore } from './config'
 import { addDoc, collection, onSnapshot, doc } from "firebase/firestore";
 import uuid from 'react-native-uuid';
 import BottomButtons from './BottomButtons';

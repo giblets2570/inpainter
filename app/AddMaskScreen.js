@@ -6,7 +6,7 @@ import * as FileSystem from 'expo-file-system';
 import uuid from 'react-native-uuid';
 import BottomButtons from './BottomButtons';
 import { ref, uploadBytesResumable } from "firebase/storage";
-import { storage } from './firebaseConfig'
+import { storage } from './config'
 
 
 const { width, height } = Dimensions.get("window")
